@@ -1,4 +1,5 @@
-use example_runner::{winit::window::WindowAttributes, ExampleDescriptor, RunError};
+use example_runner::winit::window::WindowAttributes;
+use example_runner::{ExampleDescriptor, RunError};
 use keibrush::{FontFamily, Rect, Scene, Size2, Span, TextStyle, Vec2};
 
 fn main() -> Result<(), RunError> {
@@ -19,7 +20,8 @@ fn render(scene: &mut Scene, size: Size2<f32>) {
     let lower_half = upper_half.map_origin(|origin| origin + Vec2::from_y(half_height.h));
 
     scene.draw_text(
-        "hello world! this is an example of plain text (`Source::Plain`). The provided `TextStyle` applies to all text.",
+        "hello world! this is an example of plain text (`Source::Plain`). The provided \
+         `TextStyle` applies to all text.",
         upper_half,
         TextStyle { size: 36.0, ..Default::default() },
     );

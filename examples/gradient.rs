@@ -1,9 +1,18 @@
 //! Renders a `red -> blue` gradient from the top-left corner to the
 //! bottom-right.
 
-use example_runner::{winit::window::WindowAttributes, ExampleDescriptor, RunError};
+use example_runner::winit::window::WindowAttributes;
+use example_runner::{ExampleDescriptor, RunError};
 use keibrush::{
-    Color, ColorStop, FillStyle, LinearGradient, Point2, Rect, Scene, Size2, Zero,
+    Color,
+    ColorStop,
+    FillStyle,
+    LinearGradient,
+    Point2,
+    Rect,
+    Scene,
+    Size2,
+    Zero,
 };
 
 fn main() -> Result<(), RunError> {

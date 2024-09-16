@@ -11,7 +11,8 @@ pub enum Source {
     Plain(Cow<'static, str>),
     /// Rich text.
     ///
-    /// Made up of individual [`Span`]s that can override the formatting of the text.
+    /// Made up of individual [`Span`]s that can override the formatting of the
+    /// text.
     Rich(Vec<Span>),
 }
 

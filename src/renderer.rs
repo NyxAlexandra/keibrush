@@ -4,7 +4,12 @@ use parley::{FontContext, LayoutContext};
 use thiserror::Error;
 use vello::glyph::skrifa::instance::NormalizedCoord;
 use vello::wgpu::{
-    Device, Queue, SurfaceTexture, Texture, TextureFormat, TextureViewDescriptor,
+    Device,
+    Queue,
+    SurfaceTexture,
+    Texture,
+    TextureFormat,
+    TextureViewDescriptor,
 };
 use vello::{kurbo, peniko};
 pub use vello::{AaConfig, AaSupport};
