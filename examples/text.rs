@@ -1,4 +1,4 @@
-use example_runner::{ExampleDescriptor, RunError, WindowAttributes};
+use example_runner::{winit::window::WindowAttributes, ExampleDescriptor, RunError};
 use keibrush::{FontFamily, Rect, Scene, Size2, Span, TextStyle, Vec2};
 
 fn main() -> Result<(), RunError> {

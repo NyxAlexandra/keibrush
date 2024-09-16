@@ -1,6 +1,8 @@
 use std::mem;
 use std::sync::Arc;
 
+pub extern crate winit;
+
 use keibrush::wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface};
 use keibrush::{
     Affine2, RenderDescriptor, Renderer, RendererDescriptor, Scene, Size2, Vec2,
@@ -9,10 +11,10 @@ use pollster::FutureExt;
 use thiserror::Error;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
-pub use winit::error::EventLoopError;
+use winit::error::EventLoopError;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, EventLoop};
-pub use winit::window::WindowAttributes;
+use winit::window::WindowAttributes;
 use winit::window::{Window, WindowId};
 
 /// Runs a simple [`winit`] application that draws with the provided closure.

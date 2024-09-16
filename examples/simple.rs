@@ -1,14 +1,6 @@
-use example_runner::{ExampleDescriptor, RunError, WindowAttributes};
+use example_runner::{winit::window::WindowAttributes, ExampleDescriptor, RunError};
 use keibrush::{
-    Color,
-    FillStyle,
-    Font,
-    FontFamily,
-    Point2,
-    Rect,
-    Scene,
-    Size2,
-    StrokeStyle,
+    Color, FillStyle, Font, FontFamily, Point2, Rect, Scene, Size2, StrokeStyle,
     TextStyle,
 };
 
