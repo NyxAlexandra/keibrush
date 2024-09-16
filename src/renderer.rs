@@ -1,3 +1,5 @@
+use std::mem;
+
 use parley::fontique::{Collection, CollectionOptions};
 use parley::style::{FontStack, StyleProperty};
 use parley::{FontContext, LayoutContext};
@@ -121,27 +123,33 @@ impl Renderer {
                         let size = style.size;
                         let alignment: parley::layout::Alignment = style.alignment.into();
 
-                        let family = &style.font.family;
-                        let fallback = &style.font.fallback;
-                        let weight: parley::style::FontWeight = style.font.weight.into();
-                        let style: parley::style::FontStyle = style.font.style.into();
+                        let font_family: parley::style::FontFamily =
+                            (&style.font.family).into();
+                        let font_weight: parley::style::FontWeight =
+                            style.font.weight.into();
+                        let font_style: parley::style::FontStyle =
+                            style.font.style.into();
 
                         let mut builder =
                             self.layout_cx.ranged_builder(&mut self.font_cx, &text, 1.0);
 
                         let mut font_stack: Vec<parley::style::FontFamily> = Vec::new();
 
-                        font_stack.push(family.into());
+                        font_stack.push(font_family.into());
                         font_stack.extend(
-                            fallback.into_iter().map(parley::style::FontFamily::from),
+                            style
+                                .font
+                                .fallback
+                                .iter()
+                                .map(parley::style::FontFamily::from),
                         );
 
                         builder.push_default(&StyleProperty::FontStack(FontStack::List(
                             &font_stack,
                         )));
                         builder.push_default(&StyleProperty::FontSize(size));
-                        builder.push_default(&StyleProperty::FontWeight(weight));
-                        builder.push_default(&StyleProperty::FontStyle(style));
+                        builder.push_default(&StyleProperty::FontWeight(font_weight));
+                        builder.push_default(&StyleProperty::FontStyle(font_style));
                         builder.push_default(&StyleProperty::Brush(brush));
 
                         if let Source::Rich(spans) = source {
@@ -151,12 +159,19 @@ impl Renderer {
                                 let range = start..(start + span.source.len());
 
                                 if let Some(font_family) = span.font_family.as_ref() {
+                                    let prev = mem::replace(
+                                        &mut font_stack[0],
+                                        font_family.into(),
+                                    );
+
                                     builder.push(
-                                        &StyleProperty::FontStack(FontStack::Single(
-                                            font_family.into(),
+                                        &StyleProperty::FontStack(FontStack::List(
+                                            &font_stack,
                                         )),
                                         range.clone(),
                                     );
+
+                                    font_stack[0] = prev;
                                 }
                                 if let Some(font_style) = span.font_style {
                                     builder.push(
