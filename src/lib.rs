@@ -2,9 +2,9 @@
 //!
 //! `keibrush` Is an easy-to-use vector graphics library.
 //!
-//! The API revolves around [`Scene`], a sequence of vector graphics [`Command`]s
-//! (fill, stroke, etc.). Scenes can be rendered with a [`Renderer`] (if the
-//! `renderer` feature is enabled).
+//! The API revolves around [`Scene`], a sequence of vector graphics
+//! [`Command`]s (fill, stroke, etc.). Scenes can be rendered with a
+//! [`Renderer`] (if the `renderer` feature is enabled).
 
 use std::{slice, vec};
 

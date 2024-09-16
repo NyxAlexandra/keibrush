@@ -1,6 +1,7 @@
+use std::borrow::Cow;
+
 #[cfg(feature = "renderer")]
 use parley::fontique;
-use std::borrow::Cow;
 
 use super::Color;
 
@@ -67,10 +68,10 @@ pub enum TextAlignment {
 impl Default for TextStyle {
     fn default() -> Self {
         Self {
-            font: Font::default(),
+            font: Default::default(),
             color: Color::WHITE,
             size: 16.0,
-            alignment: TextAlignment::Start,
+            alignment: Default::default(),
         }
     }
 }

@@ -1,20 +1,25 @@
-use std::{mem, sync::Arc};
+use std::mem;
+use std::sync::Arc;
 
+use keibrush::wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface};
 use keibrush::{
-    wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface},
-    Affine2, RenderDescriptor, Renderer, RendererDescriptor, Scene, Size2, Vec2,
+    Affine2,
+    RenderDescriptor,
+    Renderer,
+    RendererDescriptor,
+    Scene,
+    Size2,
+    Vec2,
 };
 use pollster::FutureExt;
 use thiserror::Error;
+use winit::application::ApplicationHandler;
+use winit::dpi::PhysicalSize;
 pub use winit::error::EventLoopError;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, EventLoop};
 pub use winit::window::WindowAttributes;
-use winit::{
-    application::ApplicationHandler,
-    dpi::PhysicalSize,
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop, EventLoop},
-    window::{Window, WindowId},
-};
+use winit::window::{Window, WindowId};
 
 /// Runs a simple [`winit`] application that draws with the provided closure.
 pub fn run(
@@ -88,7 +93,8 @@ struct Impl<F> {
 enum WindowState {
     /// [`ApplicationHandler::resumed`] hasn't been called yet.
     Uninit(WindowAttributes),
-    /// The application has been suspended, the surface has been invalidated and needs to be recreated.
+    /// The application has been suspended, the surface has been invalidated and
+    /// needs to be recreated.
     Suspended(Arc<Window>),
     /// The window and its surface have been initialized.
     Init { window: Arc<Window>, surface: Surface<'static> },

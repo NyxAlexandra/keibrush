@@ -1,8 +1,9 @@
-use crate::{Color, Point2, Zero};
 #[cfg(feature = "renderer")]
 use vello::peniko;
 #[cfg(feature = "renderer")]
 pub use vello::peniko::Extend;
+
+use crate::{Color, Point2, Zero};
 
 /// Source of pixels for a fill or stroke operation.
 #[derive(Debug, Clone, PartialEq)]

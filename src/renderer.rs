@@ -11,7 +11,7 @@ pub use vello::{AaConfig, AaSupport};
 
 use crate::element::Color;
 use crate::math::Affine2;
-use crate::{Command, FillStyle, Layer, Max, Rect, Scene, Size2, Source};
+use crate::{Brush, Command, FillStyle, Layer, Max, Rect, Scene, Size2, Source};
 
 /// A renderer for a [`Scene`].
 pub struct Renderer {
@@ -112,13 +112,14 @@ impl Renderer {
                     Command::DrawText { source, bounds, style } => {
                         let Source::Plain(source) = source;
 
-                        let color = style.color;
+                        let brush: peniko::Brush = Brush::Solid(style.color).into();
                         let size = style.size;
-                        let alignment = style.alignment;
+                        let alignment: parley::layout::Alignment = style.alignment.into();
+
                         let family = &style.font.family;
                         let fallback = &style.font.fallback;
-                        let weight = style.font.weight;
-                        let style = style.font.style;
+                        let weight: parley::style::FontWeight = style.font.weight.into();
+                        let style: parley::style::FontStyle = style.font.style.into();
 
                         let mut builder = self.layout_cx.ranged_builder(
                             &mut self.font_cx,
@@ -137,16 +138,14 @@ impl Renderer {
                             &font_stack,
                         )));
                         builder.push_default(&StyleProperty::FontSize(size));
-                        builder.push_default(&StyleProperty::FontWeight(weight.into()));
-                        builder.push_default(&StyleProperty::FontStyle(style.into()));
-                        builder.push_default(&StyleProperty::Brush(
-                            peniko::Brush::Solid(color.into()),
-                        ));
+                        builder.push_default(&StyleProperty::FontWeight(weight));
+                        builder.push_default(&StyleProperty::FontStyle(style));
+                        builder.push_default(&StyleProperty::Brush(brush));
 
                         let mut layout = builder.build();
 
                         // TODO: respect vertical bounds
-                        layout.break_all_lines(Some(bounds.size.w), alignment.into());
+                        layout.break_all_lines(Some(bounds.size.w), alignment);
 
                         for line in layout.lines() {
                             for glyph_run in line.glyph_runs() {

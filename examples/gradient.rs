@@ -1,8 +1,9 @@
-//! Renders a `red -> blue` gradient from the top-left corner to the bottom-right.
+//! Renders a `red -> blue` gradient from the top-left corner to the
+//! bottom-right.
 
 use example_runner::{ExampleDescriptor, RunError, WindowAttributes};
 use keibrush::{
-    Color, ColorStop, FillStyle, LinearGradient, Point2, Rect, Scene, Size2, Vec2, Zero,
+    Color, ColorStop, FillStyle, LinearGradient, Point2, Rect, Scene, Size2, Zero,
 };
 
 fn main() -> Result<(), RunError> {
