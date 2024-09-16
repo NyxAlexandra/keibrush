@@ -93,18 +93,18 @@ impl Renderer {
                         let FillStyle { rule } = *style;
 
                         let style: peniko::Fill = rule.into();
-                        let brush: peniko::BrushRef = brush.into();
+                        let brush: peniko::Brush = brush.clone().into();
 
-                        output.fill(style, kurbo::Affine::IDENTITY, brush, None, path);
+                        output.fill(style, kurbo::Affine::IDENTITY, &brush, None, path);
                     },
                     Command::Stroke { path, brush, style } => {
                         let stroke: kurbo::Stroke = (*style).into();
-                        let brush: peniko::BrushRef = brush.into();
+                        let brush: peniko::Brush = brush.clone().into();
 
                         output.stroke(
                             &stroke,
                             kurbo::Affine::IDENTITY,
-                            brush,
+                            &brush,
                             None,
                             path,
                         );

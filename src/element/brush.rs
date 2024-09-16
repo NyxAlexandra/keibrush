@@ -1,12 +1,38 @@
-use crate::Color;
+use crate::{Color, Point2, Zero};
 #[cfg(feature = "renderer")]
 use vello::peniko;
+#[cfg(feature = "renderer")]
+pub use vello::peniko::Extend;
 
 /// Source of pixels for a fill or stroke operation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Brush {
     /// A solid color fill.
     Solid(Color),
+    // Fill with a linear gradient.
+    LinearGradient(LinearGradient),
+}
+
+/// A linear gradient.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LinearGradient {
+    /// The start of the gradient.
+    pub start: Point2<f32>,
+    /// The end of the gradient.
+    pub end: Point2<f32>,
+    /// How to extend the gradient to fit the painting area.
+    pub extend: Extend,
+    /// The colors in the gradient.
+    pub stops: Vec<ColorStop>,
+}
+
+/// A color stop in a gradient.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ColorStop {
+    /// Offset into the gradient.
+    pub offset: f32,
+    /// The color at the offset.
+    pub color: Color,
 }
 
 impl From<Color> for Brush {
@@ -15,31 +41,49 @@ impl From<Color> for Brush {
     }
 }
 
+impl From<LinearGradient> for Brush {
+    fn from(linear_gradient: LinearGradient) -> Self {
+        Self::LinearGradient(linear_gradient)
+    }
+}
+
 #[cfg(feature = "renderer")]
 impl From<Brush> for peniko::Brush {
     fn from(brush: Brush) -> Self {
         match brush {
-            Brush::Solid(Color { r, g, b, a }) => {
-                peniko::Brush::Solid(peniko::Color::rgba(r as _, g as _, b as _, a as _))
+            Brush::Solid(color) => peniko::Brush::Solid(color.into()),
+            Brush::LinearGradient(LinearGradient { start, end, extend, stops }) => {
+                peniko::Brush::Gradient(peniko::Gradient {
+                    kind: peniko::GradientKind::Linear {
+                        start: start.into(),
+                        end: end.into(),
+                    },
+                    extend,
+                    stops: peniko::ColorStops::from_iter(
+                        stops.into_iter().map(Into::into),
+                    ),
+                })
             },
         }
     }
 }
 
-#[cfg(feature = "renderer")]
-impl From<Brush> for peniko::BrushRef<'_> {
-    fn from(brush: Brush) -> Self {
-        (&brush).into()
+impl Default for LinearGradient {
+    fn default() -> Self {
+        Self {
+            start: Point2::ZERO,
+            end: Point2::ZERO,
+            extend: Default::default(),
+            stops: Default::default(),
+        }
     }
 }
 
 #[cfg(feature = "renderer")]
-impl From<&Brush> for peniko::BrushRef<'_> {
-    fn from(brush: &Brush) -> Self {
-        match brush {
-            Brush::Solid(Color { r, g, b, a }) => peniko::BrushRef::Solid(
-                peniko::Color::rgba(*r as _, *g as _, *b as _, *a as _),
-            ),
-        }
+impl From<ColorStop> for peniko::ColorStop {
+    fn from(color_stop: ColorStop) -> Self {
+        let ColorStop { offset, color } = color_stop;
+
+        peniko::ColorStop { offset, color: color.into() }
     }
 }

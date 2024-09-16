@@ -86,6 +86,15 @@ impl<T: fmt::Debug> fmt::Debug for Point2<T> {
     }
 }
 
+#[cfg(feature = "renderer")]
+impl From<Point2<f32>> for vello::kurbo::Point {
+    fn from(point: Point2<f32>) -> Self {
+        let Point2 { x, y } = point;
+
+        vello::kurbo::Point::new(x as _, y as _)
+    }
+}
+
 impl_add!(Point2 { x, y });
 impl_sub!(Point2 { x, y });
 impl_neg!(Point2 { x, y });
