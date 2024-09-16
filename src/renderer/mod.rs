@@ -1,0 +1,316 @@
+pub use self::context::*;
+use parley::fontique::{Collection, CollectionOptions};
+use parley::style::{FontStack, StyleProperty};
+use parley::{FontContext, LayoutContext};
+use thiserror::Error;
+use vello::glyph::skrifa::instance::NormalizedCoord;
+use vello::wgpu::{
+    Device, Queue, SurfaceTexture, Texture, TextureFormat, TextureViewDescriptor,
+};
+use vello::{kurbo, peniko};
+pub use vello::{AaConfig, AaSupport};
+
+use crate::element::Color;
+use crate::math::Affine2;
+use crate::{Command, FillStyle, Layer, Max, Rect, Scene, Size2, Source};
+
+mod context;
+
+/// A renderer for a [`Scene`].
+pub struct Renderer {
+    inner: vello::Renderer,
+    scratch: vello::Scene,
+    output: vello::Scene,
+    font_cx: FontContext,
+    layout_cx: LayoutContext<peniko::Brush>,
+}
+
+/// Parameters for creating a [`Renderer`].
+pub struct RendererDescriptor {
+    /// The texture format to use when calling [`Renderer::render_to_surface`].
+    ///
+    /// If `None`, the renderer cannot be used to render to surfaces.
+    pub surface_format: Option<TextureFormat>,
+    /// Anti-aliasing methods to support (default: [`AaSupport::all`]).
+    pub antialiasing_support: AaSupport,
+    /// Whether to load fonts from the system (default: `true`).
+    pub use_system_fonts: bool,
+}
+
+/// Parameters for calling [`Renderer::render_to_texture`] and
+/// [`Renderer::render_to_surface`].
+#[derive(Clone, Copy)]
+pub struct RenderDescriptor {
+    /// The method of anti-aliasing to use.
+    pub antialiasing_method: AaConfig,
+    /// The base color.
+    pub clear_color: Color,
+    /// Transform applied to the entire scene.
+    pub global_transform: Affine2<f32>,
+    /// Transform applied to text.
+    pub text_transform: Affine2<f32>,
+}
+
+impl Renderer {
+    /// Creates a new renderer.
+    pub fn new(device: &Device, desc: RendererDescriptor) -> Result<Self, RendererError> {
+        let RendererDescriptor { surface_format, antialiasing_support, use_system_fonts } =
+            desc;
+
+        let inner = vello::Renderer::new(
+            device,
+            vello::RendererOptions {
+                surface_format,
+                use_cpu: false,
+                antialiasing_support,
+                num_init_threads: None,
+            },
+        )?;
+        let output = vello::Scene::new();
+        let scratch = vello::Scene::new();
+        let font_cx = FontContext {
+            collection: Collection::new(CollectionOptions {
+                system_fonts: use_system_fonts,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let layout_cx = LayoutContext::new();
+
+        Ok(Self { inner, output, scratch, font_cx, layout_cx })
+    }
+
+    fn prepare(&mut self, scene: &Scene, desc: &RenderDescriptor) {
+        let needs_final_transform = desc.global_transform != Affine2::IDENTITY;
+
+        self.output.reset();
+        self.scratch.reset();
+
+        {
+            let output =
+                if !needs_final_transform { &mut self.output } else { &mut self.scratch };
+
+            for command in scene {
+                match command {
+                    Command::Fill { path, brush, style } => {
+                        let FillStyle { rule } = *style;
+
+                        let style: peniko::Fill = rule.into();
+                        let brush: peniko::BrushRef = brush.into();
+
+                        output.fill(style, kurbo::Affine::IDENTITY, brush, None, path);
+                    },
+                    Command::Stroke { path, brush, style } => {
+                        let stroke: kurbo::Stroke = (*style).into();
+                        let brush: peniko::BrushRef = brush.into();
+
+                        output.stroke(
+                            &stroke,
+                            kurbo::Affine::IDENTITY,
+                            brush,
+                            None,
+                            path,
+                        );
+                    },
+                    Command::DrawText { source, bounds, style } => {
+                        let Source::Plain(source) = source;
+
+                        let color = style.color;
+                        let size = style.size;
+                        let alignment = style.alignment;
+                        let family = &style.font.family;
+                        let fallback = &style.font.fallback;
+                        let weight = style.font.weight;
+                        let style = style.font.style;
+
+                        let mut builder = self.layout_cx.ranged_builder(
+                            &mut self.font_cx,
+                            &source,
+                            1.0,
+                        );
+
+                        let mut font_stack: Vec<parley::style::FontFamily> = Vec::new();
+
+                        font_stack.push(family.into());
+                        font_stack.extend(
+                            fallback.into_iter().map(parley::style::FontFamily::from),
+                        );
+
+                        builder.push_default(&StyleProperty::FontStack(FontStack::List(
+                            &font_stack,
+                        )));
+                        builder.push_default(&StyleProperty::FontSize(size));
+                        builder.push_default(&StyleProperty::FontWeight(weight.into()));
+                        builder.push_default(&StyleProperty::FontStyle(style.into()));
+                        builder.push_default(&StyleProperty::Brush(
+                            peniko::Brush::Solid(color.into()),
+                        ));
+
+                        let mut layout = builder.build();
+
+                        // TODO: respect vertical bounds
+                        layout.break_all_lines(Some(bounds.size.w), alignment.into());
+
+                        for line in layout.lines() {
+                            for glyph_run in line.glyph_runs() {
+                                let run = glyph_run.run();
+
+                                let mut run_x = glyph_run.offset();
+                                let run_y = glyph_run.baseline();
+
+                                let coords: Vec<_> = run
+                                    .normalized_coords()
+                                    .iter()
+                                    .copied()
+                                    .map(NormalizedCoord::from_bits)
+                                    .collect();
+
+                                output
+                                .draw_glyphs(run.font())
+                                .brush(&glyph_run.style().brush)
+                                .transform(
+                                    desc.text_transform
+                                        .map_translation(|translation| {
+                                            translation + bounds.origin.to_vec()
+                                        })
+                                        .into(),
+                                )
+                                .font_size(run.font_size())
+                                .normalized_coords(&coords)
+                                .draw(
+                                    peniko::Fill::NonZero,
+                                    glyph_run.glyphs().map(
+                                        |parley::layout::Glyph {
+                                             id,
+                                             x,
+                                             y,
+                                             advance,
+                                             ..
+                                         }| {
+                                            let out = vello::glyph::Glyph {
+                                                id: id as _,
+                                                x: x + run_x,
+                                                y: y + run_y,
+                                            };
+
+                                            run_x += advance;
+
+                                            out
+                                        },
+                                    ),
+                                );
+                            }
+                        }
+                    },
+                    Command::PushLayer(layer) => {
+                        let Layer { transform, blend_mode, clip, alpha } = layer;
+
+                        let transform: kurbo::Affine = (*transform).into();
+
+                        if let Some(clip) = clip {
+                            output.push_layer(*blend_mode, *alpha, transform, clip);
+                        } else {
+                            let clip: kurbo::Rect = Rect::from_size(Size2::MAX).into();
+
+                            output.push_layer(*blend_mode, *alpha, transform, &clip);
+                        }
+                    },
+                    Command::PopLayer => output.pop_layer(),
+                }
+            }
+        }
+
+        if needs_final_transform {
+            self.output.append(&self.scratch, Some(desc.global_transform.into()));
+        }
+    }
+
+    /// Render to a texture.
+    pub fn render_to_texture(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        texture: &Texture,
+        scene: &Scene,
+        desc: &RenderDescriptor,
+    ) -> Result<(), RendererError> {
+        self.prepare(scene, desc);
+
+        let RenderDescriptor { antialiasing_method, clear_color, .. } = *desc;
+
+        let view = texture.create_view(&TextureViewDescriptor::default());
+
+        self.inner.render_to_texture(
+            device,
+            queue,
+            &self.output,
+            &view,
+            &vello::RenderParams {
+                base_color: clear_color.into(),
+                width: texture.width(),
+                height: texture.height(),
+                antialiasing_method,
+            },
+        )?;
+
+        Ok(())
+    }
+
+    /// Render to a surface.
+    pub fn render_to_surface(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        surface: &SurfaceTexture,
+        scene: &Scene,
+        desc: &RenderDescriptor,
+    ) -> Result<(), RendererError> {
+        self.prepare(scene, desc);
+
+        let RenderDescriptor { antialiasing_method, clear_color, .. } = *desc;
+
+        self.inner.render_to_surface(
+            device,
+            queue,
+            &self.output,
+            surface,
+            &vello::RenderParams {
+                base_color: clear_color.into(),
+                width: surface.texture.width(),
+                height: surface.texture.height(),
+                antialiasing_method,
+            },
+        )?;
+
+        Ok(())
+    }
+}
+
+/// Error when creating a [`Renderer`] and when calling
+/// [`Renderer::render_to_texture`] or [`Renderer::render_to_surface`].
+#[derive(Debug, Error)]
+pub enum RendererError {
+    #[error(transparent)]
+    Inner(#[from] vello::Error),
+}
+
+impl Default for RendererDescriptor {
+    fn default() -> Self {
+        Self {
+            surface_format: None,
+            antialiasing_support: AaSupport::all(),
+            use_system_fonts: true,
+        }
+    }
+}
+
+impl Default for RenderDescriptor {
+    fn default() -> Self {
+        Self {
+            antialiasing_method: AaConfig::Area,
+            clear_color: Color::TRANSPARENT,
+            global_transform: Affine2::IDENTITY,
+            text_transform: Affine2::IDENTITY,
+        }
+    }
+}
