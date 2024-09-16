@@ -1,4 +1,3 @@
-pub use self::context::*;
 use parley::fontique::{Collection, CollectionOptions};
 use parley::style::{FontStack, StyleProperty};
 use parley::{FontContext, LayoutContext};
@@ -13,8 +12,6 @@ pub use vello::{AaConfig, AaSupport};
 use crate::element::Color;
 use crate::math::Affine2;
 use crate::{Command, FillStyle, Layer, Max, Rect, Scene, Size2, Source};
-
-mod context;
 
 /// A renderer for a [`Scene`].
 pub struct Renderer {

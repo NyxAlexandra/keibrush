@@ -8,3 +8,4 @@ keibrush.path = ".."
 thiserror.workspace = true
 
 winit = "0.30.5"
+pollster = "0.3.0"

@@ -473,6 +473,7 @@ name = "example-runner"
 version = "0.1.0"
 dependencies = [
  "keibrush",
+ "pollster",
  "thiserror",
  "winit",
 ]
@@ -873,7 +874,6 @@ version = "0.1.0"
 dependencies = [
  "example-runner",
  "parley",
- "pollster",
  "thiserror",
  "vello",
 ]

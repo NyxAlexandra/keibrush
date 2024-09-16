@@ -1,9 +1,10 @@
 use std::{mem, sync::Arc};
 
 use keibrush::{
-    wgpu::Surface, Affine2, RenderContext, RenderContextError, RenderDescriptor,
-    Renderer, RendererDescriptor, Scene, Size2, Vec2,
+    wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface},
+    Affine2, RenderDescriptor, Renderer, RendererDescriptor, Scene, Size2, Vec2,
 };
+use pollster::FutureExt;
 use thiserror::Error;
 pub use winit::error::EventLoopError;
 pub use winit::window::WindowAttributes;
@@ -22,20 +23,37 @@ pub fn run(
 ) -> Result<(), RunError> {
     let scene = Scene::new();
 
-    let render_cx = RenderContext::new(Default::default())?;
+    let instance = Instance::default();
+    let adapter = instance
+        .request_adapter(&Default::default())
+        .block_on()
+        .ok_or(RunError::NoSuitableAdapter)?;
+    let (device, queue) = adapter.request_device(&Default::default(), None).block_on()?;
+
     let window_state = WindowState::Uninit(window_attributes);
     let renderer = None;
 
     EventLoop::new()?
-        .run_app(&mut Impl { f, scene, render_cx, window_state, renderer })
+        .run_app(&mut Impl {
+            f,
+            scene,
+            instance,
+            adapter,
+            device,
+            queue,
+            window_state,
+            renderer,
+        })
         .map_err(Into::into)
 }
 
 /// Error when calling [`run`].
 #[derive(Debug, Error)]
 pub enum RunError {
+    #[error("no suitable adapter found for the given configuration")]
+    NoSuitableAdapter,
     #[error(transparent)]
-    RenderContextError(#[from] RenderContextError),
+    RequestDeviceError(#[from] RequestDeviceError),
     #[error(transparent)]
     EventLoopError(#[from] EventLoopError),
 }
@@ -44,7 +62,11 @@ struct Impl<F> {
     f: F,
     scene: Scene,
 
-    render_cx: RenderContext,
+    instance: Instance,
+    adapter: Adapter,
+    device: Device,
+    queue: Queue,
+
     window_state: WindowState,
     renderer: Option<Renderer>,
 }
@@ -67,7 +89,7 @@ where
 
         if let WindowState::Uninit(attributes) = window_state {
             let window = Arc::new(event_loop.create_window(attributes.clone()).unwrap());
-            let surface = self.render_cx.instance.create_surface(window.clone()).unwrap();
+            let surface = self.instance.create_surface(window.clone()).unwrap();
 
             window_state = WindowState::Init { window, surface };
         }
@@ -92,7 +114,7 @@ where
         let mut window_state = self.window_state.take();
 
         if let WindowState::Suspended(window) = window_state {
-            let surface = self.render_cx.instance.create_surface(window.clone()).unwrap();
+            let surface = self.instance.create_surface(window.clone()).unwrap();
 
             window_state = WindowState::Init { window, surface };
         }
@@ -109,9 +131,9 @@ where
             match event {
                 WindowEvent::Resized(PhysicalSize { width, height }) => {
                     surface.configure(
-                        &self.render_cx.device,
+                        &self.device,
                         &surface
-                            .get_default_config(&self.render_cx.adapter, width, height)
+                            .get_default_config(&self.adapter, width, height)
                             .unwrap(),
                     );
                     window.request_redraw();
@@ -122,7 +144,7 @@ where
                     let texture = surface.get_current_texture().unwrap();
                     let renderer = self.renderer.get_or_insert_with(|| {
                         Renderer::new(
-                            &self.render_cx.device,
+                            &self.device,
                             RendererDescriptor {
                                 surface_format: Some(texture.texture.format()),
                                 ..Default::default()
@@ -142,8 +164,8 @@ where
 
                     renderer
                         .render_to_surface(
-                            &self.render_cx.device,
-                            &self.render_cx.queue,
+                            &self.device,
+                            &self.queue,
                             &texture,
                             &self.scene,
                             &RenderDescriptor {
