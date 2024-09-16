@@ -80,6 +80,13 @@ impl Default for LinearGradient {
     }
 }
 
+impl ColorStop {
+    /// Creates a new color stop from its offset and color.
+    pub const fn new(offset: f32, color: Color) -> Self {
+        Self { offset, color }
+    }
+}
+
 #[cfg(feature = "renderer")]
 impl From<ColorStop> for peniko::ColorStop {
     fn from(color_stop: ColorStop) -> Self {

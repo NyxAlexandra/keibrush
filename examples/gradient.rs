@@ -36,8 +36,8 @@ fn render(scene: &mut Scene, size: Size2<f32>) {
             start,
             end,
             stops: vec![
-                ColorStop { offset: 0.0, color: Color::RED },
-                ColorStop { offset: 1.0, color: Color::BLUE },
+                ColorStop::new(0.0, Color::RED),
+                ColorStop::new(1.0, Color::BLUE),
             ],
             ..Default::default()
         },
