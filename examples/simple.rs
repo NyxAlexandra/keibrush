@@ -1,4 +1,4 @@
-use example_runner::{RunError, WindowAttributes};
+use example_runner::{ExampleDescriptor, RunError, WindowAttributes};
 use keibrush::{
     Color, FillStyle, Font, FontFamily, Point2, Rect, Scene, Size2, StrokeStyle,
     TextStyle,
@@ -6,7 +6,11 @@ use keibrush::{
 
 fn main() -> Result<(), RunError> {
     example_runner::run(
-        WindowAttributes::default().with_title("keibrush - Simple Example"),
+        ExampleDescriptor {
+            window_attributes: WindowAttributes::default()
+                .with_title("keibrush - Simple Example"),
+            ..Default::default()
+        },
         render,
     )
 }

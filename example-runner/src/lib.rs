@@ -18,9 +18,11 @@ use winit::{
 
 /// Runs a simple [`winit`] application that draws with the provided closure.
 pub fn run(
-    window_attributes: WindowAttributes,
+    desc: ExampleDescriptor,
     f: impl FnMut(&mut Scene, Size2<f32>),
 ) -> Result<(), RunError> {
+    let ExampleDescriptor { window_attributes, respect_scale_factor } = desc;
+
     let scene = Scene::new();
 
     let instance = Instance::default();
@@ -43,8 +45,18 @@ pub fn run(
             queue,
             window_state,
             renderer,
+            respect_scale_factor,
         })
         .map_err(Into::into)
+}
+
+/// Configuration for an example.
+#[derive(Default)]
+pub struct ExampleDescriptor {
+    /// The attributes used to create the window.
+    pub window_attributes: WindowAttributes,
+    /// Whether to respected the window's requested scale factor.
+    pub respect_scale_factor: bool,
 }
 
 /// Error when calling [`run`].
@@ -69,6 +81,8 @@ struct Impl<F> {
 
     window_state: WindowState,
     renderer: Option<Renderer>,
+
+    respect_scale_factor: bool,
 }
 
 enum WindowState {
@@ -153,7 +167,11 @@ where
                         .unwrap()
                     });
 
-                    let scale_factor: f32 = window.scale_factor() as _;
+                    let scale_factor: f32 = if self.respect_scale_factor {
+                        window.scale_factor() as _
+                    } else {
+                        1.0
+                    };
                     let physical_size =
                         Size2::new(texture.texture.width(), texture.texture.height());
                     let size = physical_size.map(|n| n as f32 / scale_factor);
