@@ -110,7 +110,7 @@ impl Renderer {
                         );
                     },
                     Command::DrawText { source, bounds, style } => {
-                        let Source::Plain(source) = source;
+                        let text = source.text();
 
                         let brush: peniko::Brush = Brush::Solid(style.color).into();
                         let size = style.size;
@@ -121,11 +121,8 @@ impl Renderer {
                         let weight: parley::style::FontWeight = style.font.weight.into();
                         let style: parley::style::FontStyle = style.font.style.into();
 
-                        let mut builder = self.layout_cx.ranged_builder(
-                            &mut self.font_cx,
-                            &source,
-                            1.0,
-                        );
+                        let mut builder =
+                            self.layout_cx.ranged_builder(&mut self.font_cx, &text, 1.0);
 
                         let mut font_stack: Vec<parley::style::FontFamily> = Vec::new();
 
@@ -141,6 +138,48 @@ impl Renderer {
                         builder.push_default(&StyleProperty::FontWeight(weight));
                         builder.push_default(&StyleProperty::FontStyle(style));
                         builder.push_default(&StyleProperty::Brush(brush));
+
+                        if let Source::Rich(spans) = source {
+                            let mut start = 0;
+
+                            for span in spans {
+                                let range = start..(start + span.source.len());
+
+                                if let Some(font_family) = span.font_family.as_ref() {
+                                    builder.push(
+                                        &StyleProperty::FontStack(FontStack::Single(
+                                            font_family.into(),
+                                        )),
+                                        range.clone(),
+                                    );
+                                }
+                                if let Some(font_style) = span.font_style {
+                                    builder.push(
+                                        &StyleProperty::FontStyle(font_style.into()),
+                                        range.clone(),
+                                    );
+                                }
+                                if let Some(font_weight) = span.font_weight {
+                                    builder.push(
+                                        &StyleProperty::FontWeight(font_weight.into()),
+                                        range.clone(),
+                                    );
+                                }
+                                if let Some(color) = span.color {
+                                    let brush: Brush = color.into();
+
+                                    builder.push(
+                                        &StyleProperty::Brush(brush.into()),
+                                        range.clone(),
+                                    );
+                                }
+                                if let Some(size) = span.size {
+                                    builder.push(&StyleProperty::FontSize(size), range);
+                                }
+
+                                start += span.source.len();
+                            }
+                        }
 
                         let mut layout = builder.build();
 

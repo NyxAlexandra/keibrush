@@ -3,13 +3,7 @@ use std::sync::Arc;
 
 use keibrush::wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface};
 use keibrush::{
-    Affine2,
-    RenderDescriptor,
-    Renderer,
-    RendererDescriptor,
-    Scene,
-    Size2,
-    Vec2,
+    Affine2, RenderDescriptor, Renderer, RendererDescriptor, Scene, Size2, Vec2,
 };
 use pollster::FutureExt;
 use thiserror::Error;

@@ -104,11 +104,11 @@ impl<T> Rect<T> {
     }
 
     /// Returns this rectangle after applying an inset to it.
-    pub fn with_insets(self, insets: Vec2<T>) -> Rect<<T as Add>::Output>
+    pub fn with_insets(self, insets: Vec2<T>) -> Rect<T>
     where
-        T: Add + Sub<Output = <T as Add>::Output> + Copy,
+        T: Add<Output = T> + Sub<Output = T> + Copy,
     {
-        Rect { origin: self.origin + insets, size: self.size - insets }
+        Rect { origin: self.origin + insets, size: self.size - (insets + insets) }
     }
 
     /// Map each scalar in this rectangle.
