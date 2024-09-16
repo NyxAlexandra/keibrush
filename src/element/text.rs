@@ -83,12 +83,8 @@ impl<'a> From<&'a FontFamily> for parley::style::FontFamily<'a> {
 
         match font_family {
             FontFamily::Serif => parley::style::FontFamily::Generic(GenericFamily::Serif),
-            FontFamily::SansSerif => {
-                parley::style::FontFamily::Generic(GenericFamily::SansSerif)
-            },
-            FontFamily::Monospace => {
-                parley::style::FontFamily::Generic(GenericFamily::Monospace)
-            },
+            FontFamily::SansSerif => parley::style::FontFamily::Generic(GenericFamily::SansSerif),
+            FontFamily::Monospace => parley::style::FontFamily::Generic(GenericFamily::Monospace),
             FontFamily::Named(name) => parley::style::FontFamily::Named(name),
         }
     }

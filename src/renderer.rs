@@ -5,14 +5,7 @@ use parley::style::{FontStack, StyleProperty};
 use parley::{FontContext, LayoutContext};
 use thiserror::Error;
 use vello::glyph::skrifa::instance::NormalizedCoord;
-use vello::wgpu::{
-    Device,
-    Queue,
-    SurfaceTexture,
-    Texture,
-    TextureFormat,
-    TextureViewDescriptor,
-};
+use vello::wgpu::{Device, Queue, SurfaceTexture, Texture, TextureFormat, TextureViewDescriptor};
 use vello::{kurbo, peniko};
 pub use vello::{AaConfig, AaSupport};
 
@@ -58,8 +51,7 @@ pub struct RenderDescriptor {
 impl Renderer {
     /// Creates a new renderer.
     pub fn new(device: &Device, desc: RendererDescriptor) -> Result<Self, RendererError> {
-        let RendererDescriptor { surface_format, antialiasing_support, use_system_fonts } =
-            desc;
+        let RendererDescriptor { surface_format, antialiasing_support, use_system_fonts } = desc;
 
         let inner = vello::Renderer::new(
             device,
@@ -91,8 +83,7 @@ impl Renderer {
         self.scratch.reset();
 
         {
-            let output =
-                if !needs_final_transform { &mut self.output } else { &mut self.scratch };
+            let output = if !needs_final_transform { &mut self.output } else { &mut self.scratch };
 
             for command in scene {
                 match command {
@@ -108,13 +99,7 @@ impl Renderer {
                         let stroke: kurbo::Stroke = (*style).into();
                         let brush: peniko::Brush = brush.clone().into();
 
-                        output.stroke(
-                            &stroke,
-                            kurbo::Affine::IDENTITY,
-                            &brush,
-                            None,
-                            path,
-                        );
+                        output.stroke(&stroke, kurbo::Affine::IDENTITY, &brush, None, path);
                     },
                     Command::DrawText { source, bounds, style } => {
                         let text = source.text();
@@ -123,12 +108,9 @@ impl Renderer {
                         let size = style.size;
                         let alignment: parley::layout::Alignment = style.alignment.into();
 
-                        let font_family: parley::style::FontFamily =
-                            (&style.font.family).into();
-                        let font_weight: parley::style::FontWeight =
-                            style.font.weight.into();
-                        let font_style: parley::style::FontStyle =
-                            style.font.style.into();
+                        let font_family: parley::style::FontFamily = (&style.font.family).into();
+                        let font_weight: parley::style::FontWeight = style.font.weight.into();
+                        let font_style: parley::style::FontStyle = style.font.style.into();
 
                         let mut builder =
                             self.layout_cx.ranged_builder(&mut self.font_cx, &text, 1.0);
@@ -137,16 +119,11 @@ impl Renderer {
 
                         font_stack.push(font_family.into());
                         font_stack.extend(
-                            style
-                                .font
-                                .fallback
-                                .iter()
-                                .map(parley::style::FontFamily::from),
+                            style.font.fallback.iter().map(parley::style::FontFamily::from),
                         );
 
-                        builder.push_default(&StyleProperty::FontStack(FontStack::List(
-                            &font_stack,
-                        )));
+                        builder
+                            .push_default(&StyleProperty::FontStack(FontStack::List(&font_stack)));
                         builder.push_default(&StyleProperty::FontSize(size));
                         builder.push_default(&StyleProperty::FontWeight(font_weight));
                         builder.push_default(&StyleProperty::FontStyle(font_style));
@@ -159,15 +136,10 @@ impl Renderer {
                                 let range = start..(start + span.source.len());
 
                                 if let Some(font_family) = span.font_family.as_ref() {
-                                    let prev = mem::replace(
-                                        &mut font_stack[0],
-                                        font_family.into(),
-                                    );
+                                    let prev = mem::replace(&mut font_stack[0], font_family.into());
 
                                     builder.push(
-                                        &StyleProperty::FontStack(FontStack::List(
-                                            &font_stack,
-                                        )),
+                                        &StyleProperty::FontStack(FontStack::List(&font_stack)),
                                         range.clone(),
                                     );
 
@@ -188,10 +160,8 @@ impl Renderer {
                                 if let Some(color) = span.color {
                                     let brush: Brush = color.into();
 
-                                    builder.push(
-                                        &StyleProperty::Brush(brush.into()),
-                                        range.clone(),
-                                    );
+                                    builder
+                                        .push(&StyleProperty::Brush(brush.into()), range.clone());
                                 }
                                 if let Some(size) = span.size {
                                     builder.push(&StyleProperty::FontSize(size), range);
@@ -221,39 +191,35 @@ impl Renderer {
                                     .collect();
 
                                 output
-                                .draw_glyphs(run.font())
-                                .brush(&glyph_run.style().brush)
-                                .transform(
-                                    desc.text_transform
-                                        .map_translation(|translation| {
-                                            translation + bounds.origin.to_vec()
-                                        })
-                                        .into(),
-                                )
-                                .font_size(run.font_size())
-                                .normalized_coords(&coords)
-                                .draw(
-                                    peniko::Fill::NonZero,
-                                    glyph_run.glyphs().map(
-                                        |parley::layout::Glyph {
-                                             id,
-                                             x,
-                                             y,
-                                             advance,
-                                             ..
-                                         }| {
-                                            let out = vello::glyph::Glyph {
-                                                id: id as _,
-                                                x: x + run_x,
-                                                y: y + run_y,
-                                            };
+                                    .draw_glyphs(run.font())
+                                    .brush(&glyph_run.style().brush)
+                                    .transform(
+                                        desc.text_transform
+                                            .map_translation(|translation| {
+                                                translation + bounds.origin.to_vec()
+                                            })
+                                            .into(),
+                                    )
+                                    .font_size(run.font_size())
+                                    .normalized_coords(&coords)
+                                    .draw(
+                                        peniko::Fill::NonZero,
+                                        glyph_run.glyphs().map(
+                                            |parley::layout::Glyph {
+                                                 id, x, y, advance, ..
+                                             }| {
+                                                let out = vello::glyph::Glyph {
+                                                    id: id as _,
+                                                    x: x + run_x,
+                                                    y: y + run_y,
+                                                };
 
-                                            run_x += advance;
+                                                run_x += advance;
 
-                                            out
-                                        },
-                                    ),
-                                );
+                                                out
+                                            },
+                                        ),
+                                    );
                             }
                         }
                     },
