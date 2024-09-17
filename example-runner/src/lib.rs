@@ -17,7 +17,7 @@ use winit::window::{Window, WindowAttributes, WindowId};
 
 /// Runs a simple [`winit`] application that draws with the provided closure.
 pub fn run(desc: ExampleDescriptor, f: impl FnMut(&mut Scene, Size2<f32>)) -> Result<(), RunError> {
-    let ExampleDescriptor { window_attributes, respect_scale_factor } = desc;
+    let ExampleDescriptor { window_attributes, respect_scale_factor, always_redraw } = desc;
 
     let scene = Scene::new();
 
@@ -35,6 +35,7 @@ pub fn run(desc: ExampleDescriptor, f: impl FnMut(&mut Scene, Size2<f32>)) -> Re
         .run_app(&mut Impl {
             f,
             scene,
+            always_redraw,
             instance,
             adapter,
             device,
@@ -53,6 +54,10 @@ pub struct ExampleDescriptor {
     pub window_attributes: WindowAttributes,
     /// Whether to respected the window's requested scale factor.
     pub respect_scale_factor: bool,
+    /// Whether to always redraw.
+    ///
+    /// Useful if an application is animated.
+    pub always_redraw: bool,
 }
 
 /// Error when calling [`run`].
@@ -69,6 +74,7 @@ pub enum RunError {
 struct Impl<F> {
     f: F,
     scene: Scene,
+    always_redraw: bool,
 
     instance: Instance,
     adapter: Adapter,
@@ -184,6 +190,10 @@ where
                     texture.present();
                 },
                 _ => {},
+            }
+
+            if self.always_redraw {
+                window.request_redraw();
             }
         }
 
