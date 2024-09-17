@@ -3,7 +3,8 @@ use vello::peniko;
 #[cfg(feature = "renderer")]
 pub use vello::peniko::Extend;
 
-use crate::{Color, Point2, Zero};
+use super::Color;
+use crate::math::{Point2, Zero};
 
 /// Source of pixels for a fill or stroke operation.
 #[derive(Debug, Clone, PartialEq)]
@@ -55,14 +56,9 @@ impl From<Brush> for peniko::Brush {
             Brush::Solid(color) => peniko::Brush::Solid(color.into()),
             Brush::LinearGradient(LinearGradient { start, end, extend, stops }) => {
                 peniko::Brush::Gradient(peniko::Gradient {
-                    kind: peniko::GradientKind::Linear {
-                        start: start.into(),
-                        end: end.into(),
-                    },
+                    kind: peniko::GradientKind::Linear { start: start.into(), end: end.into() },
                     extend,
-                    stops: peniko::ColorStops::from_iter(
-                        stops.into_iter().map(Into::into),
-                    ),
+                    stops: peniko::ColorStops::from_iter(stops.into_iter().map(Into::into)),
                 })
             },
         }

@@ -1,12 +1,13 @@
 use example_runner::winit::window::WindowAttributes;
 use example_runner::{ExampleDescriptor, RunError};
-use keibrush::{FontFamily, Rect, Scene, Size2, Span, TextStyle, Vec2};
+use keibrush::element::{FontFamily, Span, TextStyle};
+use keibrush::math::{Rect, Size2, Vec2};
+use keibrush::Scene;
 
 fn main() -> Result<(), RunError> {
     example_runner::run(
         ExampleDescriptor {
-            window_attributes: WindowAttributes::default()
-                .with_title("keibrush - Text Example"),
+            window_attributes: WindowAttributes::default().with_title("keibrush - Text Example"),
             ..Default::default()
         },
         render,

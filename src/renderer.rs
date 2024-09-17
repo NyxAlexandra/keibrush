@@ -9,9 +9,9 @@ use vello::wgpu::{Device, Queue, SurfaceTexture, Texture, TextureFormat, Texture
 use vello::{kurbo, peniko};
 pub use vello::{AaConfig, AaSupport};
 
-use crate::element::Color;
-use crate::math::Affine2;
-use crate::{Brush, Command, FillStyle, Layer, Max, Rect, Scene, Size2, Source};
+use crate::element::{Brush, Color, FillStyle, Layer, Source};
+use crate::math::{Affine2, Max, Rect, Size2};
+use crate::{Command, Scene};
 
 /// A renderer for a [`Scene`].
 pub struct Renderer {

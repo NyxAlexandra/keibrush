@@ -3,16 +3,9 @@ use std::sync::Arc;
 
 pub extern crate winit;
 
+use keibrush::math::{Affine2, Size2, Vec2};
 use keibrush::wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface};
-use keibrush::{
-    Affine2,
-    RenderDescriptor,
-    Renderer,
-    RendererDescriptor,
-    Scene,
-    Size2,
-    Vec2,
-};
+use keibrush::{RenderDescriptor, Renderer, RendererDescriptor, Scene};
 use pollster::FutureExt;
 use thiserror::Error;
 use winit::application::ApplicationHandler;
@@ -23,10 +16,7 @@ use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Window, WindowAttributes, WindowId};
 
 /// Runs a simple [`winit`] application that draws with the provided closure.
-pub fn run(
-    desc: ExampleDescriptor,
-    f: impl FnMut(&mut Scene, Size2<f32>),
-) -> Result<(), RunError> {
+pub fn run(desc: ExampleDescriptor, f: impl FnMut(&mut Scene, Size2<f32>)) -> Result<(), RunError> {
     let ExampleDescriptor { window_attributes, respect_scale_factor } = desc;
 
     let scene = Scene::new();
@@ -153,9 +143,7 @@ where
                 WindowEvent::Resized(PhysicalSize { width, height }) => {
                     surface.configure(
                         &self.device,
-                        &surface
-                            .get_default_config(&self.adapter, width, height)
-                            .unwrap(),
+                        &surface.get_default_config(&self.adapter, width, height).unwrap(),
                     );
                     window.request_redraw();
                 },
@@ -174,11 +162,8 @@ where
                         .unwrap()
                     });
 
-                    let scale_factor: f32 = if self.respect_scale_factor {
-                        window.scale_factor() as _
-                    } else {
-                        1.0
-                    };
+                    let scale_factor: f32 =
+                        if self.respect_scale_factor { window.scale_factor() as _ } else { 1.0 };
                     let physical_size =
                         Size2::new(texture.texture.width(), texture.texture.height());
                     let size = physical_size.map(|n| n as f32 / scale_factor);
@@ -193,10 +178,7 @@ where
                             &self.queue,
                             &texture,
                             &self.scene,
-                            &RenderDescriptor {
-                                global_transform: transform,
-                                ..Default::default()
-                            },
+                            &RenderDescriptor { global_transform: transform, ..Default::default() },
                         )
                         .unwrap();
                     texture.present();

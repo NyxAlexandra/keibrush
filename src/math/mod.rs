@@ -1,3 +1,5 @@
+//! Simple math types.
+
 mod affine2;
 mod macros;
 mod mat2;

@@ -3,17 +3,9 @@
 
 use example_runner::winit::window::WindowAttributes;
 use example_runner::{ExampleDescriptor, RunError};
-use keibrush::{
-    Color,
-    ColorStop,
-    FillStyle,
-    LinearGradient,
-    Point2,
-    Rect,
-    Scene,
-    Size2,
-    Zero,
-};
+use keibrush::element::{Color, ColorStop, FillStyle, LinearGradient};
+use keibrush::math::{Point2, Rect, Size2, Zero};
+use keibrush::Scene;
 
 fn main() -> Result<(), RunError> {
     example_runner::run(
@@ -35,10 +27,7 @@ fn render(scene: &mut Scene, size: Size2<f32>) {
         LinearGradient {
             start,
             end,
-            stops: vec![
-                ColorStop::new(0.0, Color::RED),
-                ColorStop::new(1.0, Color::BLUE),
-            ],
+            stops: vec![ColorStop::new(0.0, Color::RED), ColorStop::new(1.0, Color::BLUE)],
             ..Default::default()
         },
         FillStyle::default(),

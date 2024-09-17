@@ -8,16 +8,16 @@
 
 use std::{slice, vec};
 
+use element::{Brush, FillStyle, Layer, Path, Source, StrokeStyle, TextStyle};
+use math::Rect;
 #[cfg(feature = "renderer")]
 pub use vello::wgpu;
 
-pub use self::element::*;
-pub use self::math::*;
 #[cfg(feature = "renderer")]
 pub use self::renderer::*;
 
-mod element;
-mod math;
+pub mod element;
+pub mod math;
 #[cfg(feature = "renderer")]
 mod renderer;
 mod util;
@@ -66,40 +66,17 @@ impl Scene {
     }
 
     /// Encodes a fill operation.
-    pub fn fill(
-        &mut self,
-        path: impl Into<Path>,
-        brush: impl Into<Brush>,
-        style: FillStyle,
-    ) {
-        self.commands.push(Command::Fill {
-            path: path.into(),
-            brush: brush.into(),
-            style,
-        });
+    pub fn fill(&mut self, path: impl Into<Path>, brush: impl Into<Brush>, style: FillStyle) {
+        self.commands.push(Command::Fill { path: path.into(), brush: brush.into(), style });
     }
 
     /// Encodes a stroke operation.
-    pub fn stroke(
-        &mut self,
-        path: impl Into<Path>,
-        brush: impl Into<Brush>,
-        style: StrokeStyle,
-    ) {
-        self.commands.push(Command::Stroke {
-            path: path.into(),
-            brush: brush.into(),
-            style,
-        });
+    pub fn stroke(&mut self, path: impl Into<Path>, brush: impl Into<Brush>, style: StrokeStyle) {
+        self.commands.push(Command::Stroke { path: path.into(), brush: brush.into(), style });
     }
 
     /// Encodes text.
-    pub fn draw_text(
-        &mut self,
-        source: impl Into<Source>,
-        bounds: Rect<f32>,
-        style: TextStyle,
-    ) {
+    pub fn draw_text(&mut self, source: impl Into<Source>, bounds: Rect<f32>, style: TextStyle) {
         self.commands.push(Command::DrawText { source: source.into(), bounds, style });
     }
 

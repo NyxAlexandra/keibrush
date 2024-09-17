@@ -1,3 +1,5 @@
+//! Types used in drawing.
+
 pub use self::brush::*;
 pub use self::color::*;
 pub use self::fill::*;

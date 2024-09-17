@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{Color, FontFamily, FontStyle, FontWeight};
+use crate::element::{Color, FontFamily, FontStyle, FontWeight};
 
 /// Source of text and its properties for text operations.
 #[derive(Debug, Clone, PartialEq)]
