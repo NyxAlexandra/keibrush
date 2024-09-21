@@ -1,15 +1,9 @@
-use std::mem;
-
-use parley::fontique::{Collection, CollectionOptions};
-use parley::style::{FontStack, StyleProperty};
-use parley::{FontContext, LayoutContext};
 use thiserror::Error;
-use vello::glyph::skrifa::instance::NormalizedCoord;
 use vello::wgpu::{Device, Queue, SurfaceTexture, Texture, TextureFormat, TextureViewDescriptor};
 use vello::{kurbo, peniko};
 pub use vello::{AaConfig, AaSupport};
 
-use crate::element::{Brush, Color, FillStyle, Layer, Source};
+use crate::element::{Color, FillStyle, Layer, TextContext, TextContextDescriptor, TextLayout};
 use crate::math::{Affine2, Max, Rect, Size2};
 use crate::{Command, Scene};
 
@@ -18,8 +12,7 @@ pub struct Renderer {
     inner: vello::Renderer,
     scratch: vello::Scene,
     output: vello::Scene,
-    font_cx: FontContext,
-    layout_cx: LayoutContext<peniko::Brush>,
+    text_context: TextContext,
 }
 
 /// Parameters for creating a [`Renderer`].
@@ -30,8 +23,8 @@ pub struct RendererDescriptor {
     pub surface_format: Option<TextureFormat>,
     /// Anti-aliasing methods to support (default: [`AaSupport::all`]).
     pub antialiasing_support: AaSupport,
-    /// Whether to load fonts from the system (default: `true`).
-    pub use_system_fonts: bool,
+    /// Options for creating this renderer's [`TextContext`].
+    pub text_context_desc: TextContextDescriptor,
 }
 
 /// Parameters for calling [`Renderer::render_to_texture`] and
@@ -44,14 +37,12 @@ pub struct RenderDescriptor {
     pub clear_color: Color,
     /// Transform applied to the entire scene.
     pub global_transform: Affine2<f32>,
-    /// Transform applied to text.
-    pub text_transform: Affine2<f32>,
 }
 
 impl Renderer {
     /// Creates a new renderer.
     pub fn new(device: &Device, desc: RendererDescriptor) -> Result<Self, RendererError> {
-        let RendererDescriptor { surface_format, antialiasing_support, use_system_fonts } = desc;
+        let RendererDescriptor { surface_format, antialiasing_support, text_context_desc } = desc;
 
         let inner = vello::Renderer::new(
             device,
@@ -64,16 +55,14 @@ impl Renderer {
         )?;
         let output = vello::Scene::new();
         let scratch = vello::Scene::new();
-        let font_cx = FontContext {
-            collection: Collection::new(CollectionOptions {
-                system_fonts: use_system_fonts,
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-        let layout_cx = LayoutContext::new();
+        let text_context = TextContext::new(text_context_desc);
 
-        Ok(Self { inner, output, scratch, font_cx, layout_cx })
+        Ok(Self { inner, output, scratch, text_context })
+    }
+
+    /// Returns a reference to this renderer's [`TextContext`].
+    pub fn text_context(&mut self) -> &mut TextContext {
+        &mut self.text_context
     }
 
     fn prepare(&mut self, scene: &Scene, desc: &RenderDescriptor) {
@@ -102,126 +91,16 @@ impl Renderer {
                         output.stroke(&stroke, kurbo::Affine::IDENTITY, &brush, None, path);
                     },
                     Command::DrawText { source, bounds, style } => {
-                        let text = source.text();
-
-                        let brush: peniko::Brush = Brush::Solid(style.color).into();
-                        let size = style.size;
-                        let alignment: parley::layout::Alignment = style.alignment.into();
-
-                        let font_family: parley::style::FontFamily = (&style.font.family).into();
-                        let font_weight: parley::style::FontWeight = style.font.weight.into();
-                        let font_style: parley::style::FontStyle = style.font.style.into();
-
-                        let mut builder =
-                            self.layout_cx.ranged_builder(&mut self.font_cx, &text, 1.0);
-
-                        let mut font_stack: Vec<parley::style::FontFamily> = Vec::new();
-
-                        font_stack.push(font_family.into());
-                        font_stack.extend(
-                            style.font.fallback.iter().map(parley::style::FontFamily::from),
-                        );
-
-                        builder
-                            .push_default(&StyleProperty::FontStack(FontStack::List(&font_stack)));
-                        builder.push_default(&StyleProperty::FontSize(size));
-                        builder.push_default(&StyleProperty::FontWeight(font_weight));
-                        builder.push_default(&StyleProperty::FontStyle(font_style));
-                        builder.push_default(&StyleProperty::Brush(brush));
-
-                        if let Source::Rich(spans) = source {
-                            let mut start = 0;
-
-                            for span in spans {
-                                let range = start..(start + span.source.len());
-
-                                if let Some(font_family) = span.font_family.as_ref() {
-                                    let prev = mem::replace(&mut font_stack[0], font_family.into());
-
-                                    builder.push(
-                                        &StyleProperty::FontStack(FontStack::List(&font_stack)),
-                                        range.clone(),
-                                    );
-
-                                    font_stack[0] = prev;
-                                }
-                                if let Some(font_style) = span.font_style {
-                                    builder.push(
-                                        &StyleProperty::FontStyle(font_style.into()),
-                                        range.clone(),
-                                    );
-                                }
-                                if let Some(font_weight) = span.font_weight {
-                                    builder.push(
-                                        &StyleProperty::FontWeight(font_weight.into()),
-                                        range.clone(),
-                                    );
-                                }
-                                if let Some(color) = span.color {
-                                    let brush: Brush = color.into();
-
-                                    builder
-                                        .push(&StyleProperty::Brush(brush.into()), range.clone());
-                                }
-                                if let Some(size) = span.size {
-                                    builder.push(&StyleProperty::FontSize(size), range);
-                                }
-
-                                start += span.source.len();
-                            }
-                        }
-
-                        let mut layout = builder.build();
+                        // TODO: cache layouts
+                        let mut layout =
+                            TextLayout::new(&mut self.text_context, source.clone(), style.clone());
 
                         // TODO: respect vertical bounds
-                        layout.break_all_lines(Some(bounds.size.w), alignment);
-
-                        for line in layout.lines() {
-                            for glyph_run in line.glyph_runs() {
-                                let run = glyph_run.run();
-
-                                let mut run_x = glyph_run.offset();
-                                let run_y = glyph_run.baseline();
-
-                                let coords: Vec<_> = run
-                                    .normalized_coords()
-                                    .iter()
-                                    .copied()
-                                    .map(NormalizedCoord::from_bits)
-                                    .collect();
-
-                                output
-                                    .draw_glyphs(run.font())
-                                    .brush(&glyph_run.style().brush)
-                                    .transform(
-                                        desc.text_transform
-                                            .map_translation(|translation| {
-                                                translation + bounds.origin.to_vec()
-                                            })
-                                            .into(),
-                                    )
-                                    .font_size(run.font_size())
-                                    .normalized_coords(&coords)
-                                    .draw(
-                                        peniko::Fill::NonZero,
-                                        glyph_run.glyphs().map(
-                                            |parley::layout::Glyph {
-                                                 id, x, y, advance, ..
-                                             }| {
-                                                let out = vello::glyph::Glyph {
-                                                    id: id as _,
-                                                    x: x + run_x,
-                                                    y: y + run_y,
-                                                };
-
-                                                run_x += advance;
-
-                                                out
-                                            },
-                                        ),
-                                    );
-                            }
-                        }
+                        layout.break_lines(bounds.size.w);
+                        layout.render(bounds.origin, output);
+                    },
+                    Command::DrawTextLayout { layout, origin } => {
+                        layout.render(*origin, output);
                     },
                     Command::PushLayer(layer) => {
                         let Layer { transform, blend_mode, clip, alpha } = layer;
@@ -320,7 +199,7 @@ impl Default for RendererDescriptor {
         Self {
             surface_format: None,
             antialiasing_support: AaSupport::all(),
-            use_system_fonts: true,
+            text_context_desc: Default::default(),
         }
     }
 }
@@ -331,7 +210,6 @@ impl Default for RenderDescriptor {
             antialiasing_method: AaConfig::Area,
             clear_color: Color::TRANSPARENT,
             global_transform: Affine2::IDENTITY,
-            text_transform: Affine2::IDENTITY,
         }
     }
 }

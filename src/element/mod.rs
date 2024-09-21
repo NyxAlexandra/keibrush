@@ -8,6 +8,10 @@ pub use self::path::*;
 pub use self::source::*;
 pub use self::stroke::*;
 pub use self::text::*;
+#[cfg(feature = "renderer")]
+pub use self::text_context::*;
+#[cfg(feature = "renderer")]
+pub use self::text_layout::*;
 
 mod brush;
 mod color;
@@ -17,3 +21,7 @@ mod path;
 mod source;
 mod stroke;
 mod text;
+#[cfg(feature = "renderer")]
+mod text_context;
+#[cfg(feature = "renderer")]
+mod text_layout;

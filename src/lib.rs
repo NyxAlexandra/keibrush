@@ -8,8 +8,8 @@
 
 use std::{slice, vec};
 
-use element::{Brush, FillStyle, Layer, Path, Source, StrokeStyle, TextStyle};
-use math::Rect;
+use element::{Brush, FillStyle, Layer, Path, Source, StrokeStyle, TextLayout, TextStyle};
+use math::{Point2, Rect};
 #[cfg(feature = "renderer")]
 pub use vello::wgpu;
 
@@ -23,13 +23,13 @@ mod renderer;
 mod util;
 
 /// A vector scene.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Scene {
     commands: Vec<Command>,
 }
 
 /// A single operation in a [`Scene`].
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Command {
     Fill {
         path: Path,
@@ -45,6 +45,11 @@ pub enum Command {
         source: Source,
         bounds: Rect<f32>,
         style: TextStyle,
+    },
+    #[cfg(feature = "renderer")]
+    DrawTextLayout {
+        layout: TextLayout,
+        origin: Point2<f32>,
     },
     /// Push a new layer onto the stack.
     PushLayer(Layer),
