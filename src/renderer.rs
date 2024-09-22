@@ -92,11 +92,11 @@ impl Renderer {
                     },
                     Command::DrawText { source, bounds, style } => {
                         // TODO: cache layouts
-                        let mut layout =
-                            TextLayout::new(&mut self.text_context, source.clone(), style.clone());
+                        let mut layout = TextLayout::new();
 
                         // TODO: respect vertical bounds
-                        layout.break_lines(bounds.size.w);
+                        layout.build(&mut self.text_context, source, style.clone());
+                        layout.break_lines(bounds.size.w, style.alignment);
                         layout.render(bounds.origin, output);
                     },
                     Command::DrawTextLayout { layout, origin } => {

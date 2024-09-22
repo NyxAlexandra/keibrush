@@ -5,39 +5,21 @@ use parley::Layout;
 use vello::glyph::skrifa::prelude::NormalizedCoord;
 use vello::peniko;
 
-use super::{Brush, Source, TextContext, TextStyle};
+use super::{Brush, SourceRef, TextAlignment, TextContext, TextStyle};
 use crate::math::{Affine2, Point2, Size2};
 
 /// Precalculated layout of some text.
 #[derive(Clone)]
 pub struct TextLayout {
-    source: Source,
-    style: TextStyle,
     inner: Layout<peniko::Brush>,
 }
 
 impl TextLayout {
-    /// Creates a new text layout.
-    pub fn new(text_cx: &mut TextContext, source: impl Into<Source>, style: TextStyle) -> Self {
-        let source = source.into();
+    /// Creates an empty layout.
+    pub fn new() -> Self {
         let inner = Layout::new();
 
-        let mut output = Self { source, style, inner };
-
-        output.build(text_cx);
-
-        output
-    }
-
-    /// Returns the style of this text layout.
-    pub fn style(&self) -> &TextStyle {
-        &self.style
-    }
-
-    /// Recalculates the text layout for a new style.   
-    pub fn set_style(&mut self, text_cx: &mut TextContext, style: TextStyle) {
-        self.style = style;
-        self.build(text_cx);
+        Self { inner }
     }
 
     /// Returns the size of this layout.
@@ -45,33 +27,34 @@ impl TextLayout {
         Size2::new(self.inner.width(), self.inner.height())
     }
 
-    /// Recalculates the text layout for a new source.
-    pub fn set_source(&mut self, text_cx: &mut TextContext, source: impl Into<Source>) {
-        self.source = source.into();
-        self.build(text_cx);
-    }
-
     /// Breaks all lines in this text layout to fit within a certain width.
-    pub fn break_lines(&mut self, width: f32) {
-        self.inner.break_all_lines(Some(width), self.style.alignment.into());
+    pub fn break_lines(&mut self, width: f32, alignment: TextAlignment) {
+        self.inner.break_all_lines(Some(width), alignment.into());
     }
 
-    fn build(&mut self, text_cx: &mut TextContext) {
-        let text = self.source.text();
+    /// Builds this layout with source and style.
+    pub fn build<'a>(
+        &mut self,
+        text_cx: &mut TextContext,
+        source: impl Into<SourceRef<'a>>,
+        style: TextStyle,
+    ) {
+        let source = source.into();
+        let text = source.text();
 
-        let brush: peniko::Brush = Brush::Solid(self.style.color).into();
-        let size = self.style.size;
+        let brush: peniko::Brush = Brush::Solid(style.color).into();
+        let size = style.size;
 
-        let font_family: parley::style::FontFamily = (&self.style.font.family).into();
-        let font_weight: parley::style::FontWeight = self.style.font.weight.into();
-        let font_style: parley::style::FontStyle = self.style.font.style.into();
+        let font_family: parley::style::FontFamily = (&style.font.family).into();
+        let font_weight: parley::style::FontWeight = style.font.weight.into();
+        let font_style: parley::style::FontStyle = style.font.style.into();
 
         let mut builder = text_cx.layout_cx.ranged_builder(&mut text_cx.font_cx, &text, 1.0);
 
         let mut font_stack: Vec<parley::style::FontFamily> = Vec::new();
 
         font_stack.push(font_family.into());
-        font_stack.extend(self.style.font.fallback.iter().map(parley::style::FontFamily::from));
+        font_stack.extend(style.font.fallback.iter().map(parley::style::FontFamily::from));
 
         builder.push_default(&StyleProperty::FontStack(FontStack::List(&font_stack)));
         builder.push_default(&StyleProperty::FontSize(size));
@@ -79,7 +62,7 @@ impl TextLayout {
         builder.push_default(&StyleProperty::FontStyle(font_style));
         builder.push_default(&StyleProperty::Brush(brush));
 
-        if let Source::Rich(spans) = &self.source {
+        if let SourceRef::Rich(spans) = source {
             let mut start = 0;
 
             for span in spans {
@@ -158,10 +141,6 @@ impl TextLayout {
 
 impl fmt::Debug for TextLayout {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TextLayout")
-            .field("source", &self.source)
-            .field("style", &self.style)
-            .field("size", &self.size())
-            .finish_non_exhaustive()
+        f.debug_struct("TextLayout").field("size", &self.size()).finish_non_exhaustive()
     }
 }

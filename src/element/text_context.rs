@@ -4,8 +4,8 @@ use vello::peniko;
 
 /// State used to measure and render text.
 pub struct TextContext {
-    pub(super) layout_cx: LayoutContext<peniko::Brush>,
     pub(super) font_cx: FontContext,
+    pub(super) layout_cx: LayoutContext<peniko::Brush>,
 }
 
 /// Descriptor for creating a [`TextContext`].
@@ -20,7 +20,6 @@ impl TextContext {
     pub fn new(desc: TextContextDescriptor) -> Self {
         let TextContextDescriptor { use_system_fonts } = desc;
 
-        let layout_cx = LayoutContext::new();
         let font_cx = FontContext {
             collection: Collection::new(CollectionOptions {
                 shared: false,
@@ -28,8 +27,14 @@ impl TextContext {
             }),
             ..Default::default()
         };
+        let layout_cx = LayoutContext::new();
 
-        Self { layout_cx, font_cx }
+        Self { font_cx, layout_cx }
+    }
+
+    /// Returns an iterator over the names of loaded font families.
+    pub fn family_names(&mut self) -> impl Iterator<Item = &str> + Clone {
+        self.font_cx.collection.family_names()
     }
 }
 
