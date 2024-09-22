@@ -6,6 +6,8 @@
 //! [`Command`]s (fill, stroke, etc.). Scenes can be rendered with a
 //! [`Renderer`] (if the `renderer` feature is enabled).
 
+#![cfg_attr(doc, feature(doc_auto_cfg))]
+
 use std::{slice, vec};
 
 use element::{Brush, FillStyle, Layer, Path, Source, StrokeStyle, TextLayout, TextStyle};
