@@ -3,7 +3,7 @@ use vello::wgpu::{Device, Queue, SurfaceTexture, Texture, TextureFormat, Texture
 use vello::{kurbo, peniko};
 pub use vello::{AaConfig, AaSupport};
 
-use crate::element::{Color, FillStyle, Layer, TextContext, TextContextDescriptor, TextLayout};
+use crate::element::{Color, FillStyle, Layer, TextContext, TextLayout};
 use crate::math::{Affine2, Max, Rect, Size2};
 use crate::{Command, Scene};
 
@@ -12,7 +12,6 @@ pub struct Renderer {
     inner: vello::Renderer,
     scratch: vello::Scene,
     output: vello::Scene,
-    text_context: TextContext,
 }
 
 /// Parameters for creating a [`Renderer`].
@@ -23,8 +22,6 @@ pub struct RendererDescriptor {
     pub surface_format: Option<TextureFormat>,
     /// Anti-aliasing methods to support (default: [`AaSupport::all`]).
     pub antialiasing_support: AaSupport,
-    /// Options for creating this renderer's [`TextContext`].
-    pub text_context_desc: TextContextDescriptor,
 }
 
 /// Parameters for calling [`Renderer::render_to_texture`] and
@@ -35,14 +32,12 @@ pub struct RenderDescriptor {
     pub antialiasing_method: AaConfig,
     /// The base color.
     pub clear_color: Color,
-    /// Transform applied to the entire scene.
-    pub global_transform: Affine2<f32>,
 }
 
 impl Renderer {
     /// Creates a new renderer.
     pub fn new(device: &Device, desc: RendererDescriptor) -> Result<Self, RendererError> {
-        let RendererDescriptor { surface_format, antialiasing_support, text_context_desc } = desc;
+        let RendererDescriptor { surface_format, antialiasing_support } = desc;
 
         let inner = vello::Renderer::new(
             device,
@@ -55,18 +50,18 @@ impl Renderer {
         )?;
         let output = vello::Scene::new();
         let scratch = vello::Scene::new();
-        let text_context = TextContext::new(text_context_desc);
 
-        Ok(Self { inner, output, scratch, text_context })
+        Ok(Self { inner, output, scratch })
     }
 
-    /// Returns a reference to this renderer's [`TextContext`].
-    pub fn text_context(&mut self) -> &mut TextContext {
-        &mut self.text_context
-    }
-
-    fn prepare(&mut self, scene: &Scene, desc: &RenderDescriptor) {
-        let needs_final_transform = desc.global_transform != Affine2::IDENTITY;
+    /// Encodes scene data.
+    pub fn prepare(
+        &mut self,
+        text_cx: &mut TextContext,
+        scene: &Scene,
+        global_transform: Affine2<f32>,
+    ) {
+        let needs_final_transform = global_transform != Affine2::IDENTITY;
 
         self.output.reset();
         self.scratch.reset();
@@ -95,7 +90,7 @@ impl Renderer {
                         let mut layout = TextLayout::new();
 
                         // TODO: respect vertical bounds
-                        layout.build(&mut self.text_context, source, style.clone());
+                        layout.build(text_cx, source, style.clone());
                         layout.break_lines(bounds.size.w, style.alignment);
                         layout.render(bounds.origin, output);
                     },
@@ -121,22 +116,19 @@ impl Renderer {
         }
 
         if needs_final_transform {
-            self.output.append(&self.scratch, Some(desc.global_transform.into()));
+            self.output.append(&self.scratch, Some(global_transform.into()));
         }
     }
 
-    /// Render to a texture.
+    /// Renders prepared data to a texture.
     pub fn render_to_texture(
         &mut self,
         device: &Device,
         queue: &Queue,
         texture: &Texture,
-        scene: &Scene,
         desc: &RenderDescriptor,
     ) -> Result<(), RendererError> {
-        self.prepare(scene, desc);
-
-        let RenderDescriptor { antialiasing_method, clear_color, .. } = *desc;
+        let RenderDescriptor { antialiasing_method, clear_color } = *desc;
 
         let view = texture.create_view(&TextureViewDescriptor::default());
 
@@ -156,18 +148,15 @@ impl Renderer {
         Ok(())
     }
 
-    /// Render to a surface.
+    /// Renders prepared data to a surface.
     pub fn render_to_surface(
         &mut self,
         device: &Device,
         queue: &Queue,
         surface: &SurfaceTexture,
-        scene: &Scene,
         desc: &RenderDescriptor,
     ) -> Result<(), RendererError> {
-        self.prepare(scene, desc);
-
-        let RenderDescriptor { antialiasing_method, clear_color, .. } = *desc;
+        let RenderDescriptor { antialiasing_method, clear_color } = *desc;
 
         self.inner.render_to_surface(
             device,
@@ -196,20 +185,12 @@ pub enum RendererError {
 
 impl Default for RendererDescriptor {
     fn default() -> Self {
-        Self {
-            surface_format: None,
-            antialiasing_support: AaSupport::all(),
-            text_context_desc: Default::default(),
-        }
+        Self { surface_format: None, antialiasing_support: AaSupport::all() }
     }
 }
 
 impl Default for RenderDescriptor {
     fn default() -> Self {
-        Self {
-            antialiasing_method: AaConfig::Area,
-            clear_color: Color::TRANSPARENT,
-            global_transform: Affine2::IDENTITY,
-        }
+        Self { antialiasing_method: AaConfig::Area, clear_color: Color::TRANSPARENT }
     }
 }

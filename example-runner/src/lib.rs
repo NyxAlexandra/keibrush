@@ -3,9 +3,10 @@ use std::sync::Arc;
 
 pub extern crate winit;
 
+use keibrush::element::TextContext;
 use keibrush::math::{Affine2, Size2, Vec2};
 use keibrush::wgpu::{Adapter, Device, Instance, Queue, RequestDeviceError, Surface};
-use keibrush::{RenderDescriptor, Renderer, RendererDescriptor, Scene};
+use keibrush::{Renderer, RendererDescriptor, Scene};
 use pollster::FutureExt;
 use thiserror::Error;
 use winit::application::ApplicationHandler;
@@ -30,6 +31,7 @@ pub fn run(desc: ExampleDescriptor, f: impl FnMut(&mut Scene, Size2<f32>)) -> Re
 
     let window_state = WindowState::Uninit(window_attributes);
     let renderer = None;
+    let text_context = TextContext::default();
 
     EventLoop::new()?
         .run_app(&mut Impl {
@@ -42,6 +44,7 @@ pub fn run(desc: ExampleDescriptor, f: impl FnMut(&mut Scene, Size2<f32>)) -> Re
             queue,
             window_state,
             renderer,
+            text_context,
             respect_scale_factor,
         })
         .map_err(Into::into)
@@ -83,6 +86,7 @@ struct Impl<F> {
 
     window_state: WindowState,
     renderer: Option<Renderer>,
+    text_context: TextContext,
 
     respect_scale_factor: bool,
 }
@@ -173,19 +177,14 @@ where
                     let physical_size =
                         Size2::new(texture.texture.width(), texture.texture.height());
                     let size = physical_size.map(|n| n as f32 / scale_factor);
-                    let transform = Affine2::from_scale(Vec2::splat(scale_factor));
+                    let global_transform = Affine2::from_scale(Vec2::splat(scale_factor));
 
                     self.scene.clear();
                     (self.f)(&mut self.scene, size);
 
+                    renderer.prepare(&mut self.text_context, &self.scene, global_transform);
                     renderer
-                        .render_to_surface(
-                            &self.device,
-                            &self.queue,
-                            &texture,
-                            &self.scene,
-                            &RenderDescriptor { global_transform: transform, ..Default::default() },
-                        )
+                        .render_to_surface(&self.device, &self.queue, &texture, &Default::default())
                         .unwrap();
                     texture.present();
                 },
