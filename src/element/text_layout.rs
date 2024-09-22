@@ -98,6 +98,7 @@ impl TextLayout {
         }
 
         builder.build_into(&mut self.inner);
+        self.break_lines(f32::MAX, style.alignment);
     }
 
     pub(crate) fn render(&self, origin: Point2<f32>, output: &mut vello::Scene) {
