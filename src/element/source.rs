@@ -16,6 +16,20 @@ pub enum Source {
     Rich(Vec<Span>),
 }
 
+/// Reference to a [`Source`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SourceRef<'a> {
+    /// Plain text.
+    ///
+    /// Has the same formatting for all text.
+    Plain(&'a str),
+    /// Rich text.
+    ///
+    /// Made up of individual [`Span`]s that can override the formatting of the
+    /// text.
+    Rich(&'a [Span]),
+}
+
 /// A section of text.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Span {
@@ -37,8 +51,26 @@ impl Source {
     /// The text of this source.
     pub fn text(&self) -> Cow<'static, str> {
         match self {
-            Source::Plain(cow) => cow.clone(),
+            Source::Plain(plain) => plain.clone(),
             Source::Rich(spans) => spans
+                .iter()
+                .map(|Span { source, .. }| source)
+                .fold(String::new(), |mut acc, span| {
+                    acc.push_str(&span);
+
+                    acc
+                })
+                .into(),
+        }
+    }
+}
+
+impl<'a> SourceRef<'a> {
+    /// The text of this source.
+    pub fn text(&self) -> Cow<'a, str> {
+        match self {
+            Self::Plain(plain) => (*plain).into(),
+            Self::Rich(spans) => spans
                 .iter()
                 .map(|Span { source, .. }| source)
                 .fold(String::new(), |mut acc, span| {
@@ -122,5 +154,26 @@ impl From<Vec<Span>> for Source {
 impl<const N: usize> From<[Span; N]> for Source {
     fn from(spans: [Span; N]) -> Self {
         Self::Rich(spans.to_vec())
+    }
+}
+
+impl<'a> From<&'a Source> for SourceRef<'a> {
+    fn from(source: &'a Source) -> Self {
+        match source {
+            Source::Plain(plain) => Self::Plain(plain),
+            Source::Rich(spans) => Self::Rich(spans),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for SourceRef<'a> {
+    fn from(plain: &'a str) -> Self {
+        Self::Plain(plain)
+    }
+}
+
+impl<'a> From<&'a [Span]> for SourceRef<'a> {
+    fn from(spans: &'a [Span]) -> Self {
+        Self::Rich(spans)
     }
 }
