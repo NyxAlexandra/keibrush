@@ -111,6 +111,28 @@ impl<T> Rect<T> {
         Rect { origin: self.origin + insets, size: self.size - (insets + insets) }
     }
 
+    /// Returns `true` if this rectangle fully contains `other`.
+    pub fn contains(self, other: Self) -> bool
+    where
+        T: PartialOrd + Add<Output = T> + Copy,
+    {
+        other.left() >= self.left()
+            && other.right() <= self.right()
+            && other.top() >= self.top()
+            && other.bottom() <= self.bottom()
+    }
+
+    /// Returns `true` if `point` is within the bounds of this rectangle.
+    pub fn contains_point(self, point: Point2<T>) -> bool
+    where
+        T: PartialOrd + Add<Output = T> + Copy,
+    {
+        point.x >= self.left()
+            && point.x <= self.right()
+            && point.y >= self.top()
+            && point.y <= self.bottom()
+    }
+
     /// Map each scalar in this rectangle.
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Rect<U> {
         Rect::new(self.origin.map(&mut f), self.size.map(&mut f))
@@ -161,5 +183,21 @@ impl From<Rect<f64>> for vello::kurbo::Rect {
         let Rect { origin: Point2 { x, y }, size: Size2 { w, h } } = rect;
 
         kurbo::Rect::from_origin_size((x, y), (w, h))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rect_contains() {
+        let rect = Rect::from_size(Size2::splat(300.0));
+
+        assert!(rect.contains_point(rect.origin));
+        assert!(rect.contains_point(Point2::splat(100.0)));
+
+        assert!(rect.contains(rect));
+        assert!(rect.contains(Rect::new(Point2::splat(100.0), Size2::splat(100.0))));
     }
 }
