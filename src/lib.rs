@@ -87,6 +87,11 @@ impl Scene {
         self.commands.push(Command::DrawText { source: source.into(), bounds, style });
     }
 
+    /// Draws a [`TextLayout`].
+    pub fn draw_text_layout(&mut self, layout: TextLayout, origin: Point2<f32>) {
+        self.commands.push(Command::DrawTextLayout { layout, origin });
+    }
+
     // TODO: allow manual pushing and popping of layers by validating each operation
 
     /// Encodes a new layer.
