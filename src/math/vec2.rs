@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::macros::*;
-use super::{Infinity, Max, Min, NegOne, One, Trig, Vec2, Zero};
+use super::{Infinity, Max, Min, NegOne, One, Point2, Size2, Trig, Vec2, Zero};
 use crate::util::DisplayDebug;
 
 impl<T> Vec2<T> {
@@ -32,6 +32,20 @@ impl<T> Vec2<T> {
         T: Copy,
     {
         Self::new(v, v)
+    }
+
+    /// Converts this vector to a point.
+    pub fn to_point(self) -> Point2<T> {
+        let Self { x, y } = self;
+
+        Point2 { x, y }
+    }
+
+    /// Converts this vector to a size.
+    pub fn to_size(self) -> Size2<T> {
+        let Self { x, y } = self;
+
+        Size2::new(x, y)
     }
 
     /// Returns this vector with a new `x`.
@@ -73,6 +87,14 @@ impl<T, U> Vec2<(T, U)> {
         let Self { x: (x_t, x_u), y: (y_t, y_u) } = self;
 
         (Vec2::new(x_t, y_t), Vec2::new(x_u, y_u))
+    }
+}
+
+impl Vec2<bool> {
+    /// Selects components from `if_true` if the component in `self` is `true`.
+    pub fn select<T>(self, if_true: Vec2<T>, if_false: Vec2<T>) -> Vec2<T> {
+        self.zip(if_true.zip(if_false))
+            .map(|(cond, (if_true, if_false))| cond.then_some(if_true).unwrap_or(if_false))
     }
 }
 
@@ -122,10 +144,7 @@ impl<T: fmt::Debug> fmt::Debug for Vec2<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // `Vec2::new(0, 0)`: `{x: 0, y: 0}`
 
-        f.debug_map()
-            .entry(&DisplayDebug("x"), &self.x)
-            .entry(&DisplayDebug("y"), &self.y)
-            .finish()
+        f.debug_map().entry(&DisplayDebug("x"), &self.x).entry(&DisplayDebug("y"), &self.y).finish()
     }
 }
 
